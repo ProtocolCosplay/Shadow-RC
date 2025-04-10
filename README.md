@@ -94,14 +94,14 @@ The system includes four operational modes, a robust 32-slot combo trigger syste
 
 | Category | File Range |
 |----------|------------|
-| Happy    | 0001–0016 |
-| Sad      | 0031–0035 |
-| Talking  | 0061–0076 |
-| Yelling  | 0091–0103 |
-| Classic  | 0121–0123 |
-| Dance    | 0151–0156 |
-| Singing  | 0181–0186 |
-| Lines    | 0211–0212 |
+| Happy    | 001–016    |
+| Sad      | 031–035    |
+| Talking  | 061–076    |
+| Yelling  | 091–103    |
+| Classic  | 121–123    |
+| Dance    | 151–156    |
+| Singing  | 181–186    |
+| Lines    | 211–212    |
 
 *(You can update these ranges in `MP3Handler.cpp` to match your SD card setup. MP3 filenames must use the format `####.mp3`, e.g., `0061.mp3`.)*
 
