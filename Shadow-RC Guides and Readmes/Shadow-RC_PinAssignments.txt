@@ -1,0 +1,70 @@
+===============================
+🔌 Shadow-RC Arduino Pin Layout
+===============================
+
+This reference sheet lists every pin used in the Shadow-RC project.
+Use this when wiring your Arduino Mega (or compatible board) to your receivers, motor controllers, and accessories.
+
+=======================
+📡 Receiver A (Primary)
+=======================
+Channel    | Purpose                | Arduino Pin
+-----------|------------------------|-------------
+CH1        | Turn (Joystick X)      | 2
+CH2        | Drive (Joystick Y)     | 3
+CH3        | MP3 Trigger: Happy     | 22
+CH4        | MP3 Trigger: Sad       | 24
+CH5        | MP3 Trigger: Talking   | 26
+CH6        | MP3 Trigger: Yelling   | 28
+
+========================
+📡 Receiver B (Secondary)
+========================
+Channel    | Purpose                | Arduino Pin
+-----------|------------------------|-------------
+CH1        | Dome Movement          | 21
+CH2        | Mode Switch Combo Axis | 23
+CH3        | MP3 Trigger: Classic   | 25
+CH4        | MP3 Trigger: Dance     | 27
+CH5        | MP3 Trigger: Singing   | 29
+CH6        | MP3 Trigger: Lines     | 31
+
+===============================
+⚙️ Motor Controller Outputs
+===============================
+Motor/Board        | Purpose         | Arduino Pin
+------------------ |-----------------|-------------
+Sabertooth Drive   | Droid Driving   | 16  (Manual), S1 on Sabertooth
+SyRen Dome Motor   | Dome Rotation   | Daisy Chained from Sabertooth S1 to S1 on Syren
+
+Note both Sabertooth and Syren require a daisy chained GND from Arudino
+
+===================================
+🔊 DFPlayer Mini MP3 Module (Audio)
+===================================
+Connection      | Purpose       | Arduino Pin
+----------------|---------------|-------------
+MP3_RX          | DFPlayer RX   | 18
+
+===========================
+📥 Interrupt-Based PWM Pins
+===========================
+PWMInputHandler uses interrupt-capable pins on the Arduino Mega.
+These include: 2, 3, 18, 19, 20, 21 — selected for best routing and timing.
+
+Each PWM input is read with `pulseIn()` and stored globally for mode use.
+
+=========================
+📌 Notes for the Builder
+=========================
+
+- PWM pins can be changed if needed, but must match both your code and wiring.
+- Output pins use `analogWrite()` for motor speed control.
+- MP3 trigger pins use `pulseIn()` to read button state via PWM.
+- MP3 playback is routed using random category-based banks.
+- Do not connect motors or MP3 boards until you’ve confirmed all pin mappings.
+
+==============================
+🌟 May the Force Be with You.
+==============================
+Your droid deserves clean wiring and clean code. Follow this sheet carefully!

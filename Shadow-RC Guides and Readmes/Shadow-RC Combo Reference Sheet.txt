@@ -1,0 +1,81 @@
+===============================================================================
+                    SHADOW-RC COMBO SLOT REFERENCE SHEET
+===============================================================================
+
+Shadow-RC supports up to 32 unique combo triggers using joystick direction +
+button pairings across two controllers.
+
+Each combo is triggered by:
+- Holding a joystick (UP, DOWN, LEFT, RIGHT)
+- While pressing a button (CH3–CH6) on the opposite controller
+
+-------------------------------------------------------------------------------
+COMBO SLOT BREAKDOWN
+-------------------------------------------------------------------------------
+
+Combos 1–16 → Joystick B (Controller B) + Buttons A (CH3–CH6)  
+Combos 17–32 → Joystick A (Controller A) + Buttons B (CH3–CH6)
+
+Formula:
+4 Joystick Directions × 4 Buttons = 16 combos per joystick
+
+-------------------------------------------------------------------------------
+COMBO SLOT MAP
+-------------------------------------------------------------------------------
+
+Combo #   | Joystick Held      | Button Pressed     | Common Use
+----------|--------------------|--------------------|---------------------------
+1         | B DOWN             | CH3 A              | Manual Mode (default)
+2         | B DOWN             | CH4 A              | Automated Mode
+3         | B DOWN             | CH5 A              | Hybrid Mode
+4         | B DOWN             | CH6 A              | Carpet Mode
+5         | B UP               | CH3 A              | MarcDuino Awake+
+6         | B UP               | CH4 A              | MarcDuino Quiet Mode
+7         | B UP               | CH5 A              | MarcDuino Full Awake
+8         | B UP               | CH6 A              | MarcDuino Mid Awake
+9         | B LEFT             | CH3 A              | (Unassigned / Custom)
+10        | B LEFT             | CH4 A              | (Unassigned / Custom)
+11        | B LEFT             | CH5 A              | (Unassigned / Custom)
+12        | B LEFT             | CH6 A              | (Unassigned / Custom)
+13        | B RIGHT            | CH3 A              | (Unassigned / Custom)
+14        | B RIGHT            | CH4 A              | (Unassigned / Custom)
+15        | B RIGHT            | CH5 A              | (Unassigned / Custom)
+16        | B RIGHT            | CH6 A              | (Unassigned / Custom)
+
+Combo #   | Joystick Held      | Button Pressed     | Common Use
+----------|--------------------|--------------------|---------------------------
+17        | A UP               | CH3 B              | (Unassigned / Custom)
+18        | A UP               | CH4 B              | (Unassigned / Custom)
+19        | A UP               | CH5 B              | (Unassigned / Custom)
+20        | A UP               | CH6 B              | (Unassigned / Custom)
+21        | A DOWN             | CH3 B              | (Unassigned / Custom)
+22        | A DOWN             | CH4 B              | (Unassigned / Custom)
+23        | A DOWN             | CH5 B              | (Unassigned / Custom)
+24        | A DOWN             | CH6 B              | (Unassigned / Custom)
+25        | A LEFT             | CH3 B              | (Unassigned / Custom)
+26        | A LEFT             | CH4 B              | (Unassigned / Custom)
+27        | A LEFT             | CH5 B              | (Unassigned / Custom)
+28        | A LEFT             | CH6 B              | (Unassigned / Custom)
+29        | A RIGHT            | CH3 B              | (Unassigned / Custom)
+30        | A RIGHT            | CH4 B              | (Unassigned / Custom)
+31        | A RIGHT            | CH5 B              | (Unassigned / Custom)
+32        | A RIGHT            | CH6 B              | (Unassigned / Custom)
+
+-------------------------------------------------------------------------------
+NOTES
+-------------------------------------------------------------------------------
+
+✓ CH3–CH5 = Toggle switches  
+✓ CH6 = Momentary button (~1988 µs pulse)  
+✓ Joystick directions must be held *before* button press  
+✓ Combos are assigned in ComboHandler.cpp  
+✓ Sound suppression logic may block MP3s depending on MarcDuino mode
+
+-------------------------------------------------------------------------------
+SUGGESTED LABELING
+-------------------------------------------------------------------------------
+
+1–4   → Modes  
+5–8   → MarcDuino mode control  
+9–32 → Reserved for custom actions (e.g., servos, lighting, panels)
+

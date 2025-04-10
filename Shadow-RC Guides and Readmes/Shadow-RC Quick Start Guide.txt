@@ -1,0 +1,98 @@
+===============================================================================
+                         SHADOW-RC QUICK START GUIDE
+===============================================================================
+
+This quick-start guide will get your Shadow-RC droid system up and running with 
+minimal reading. It covers the essentials: hardware, wiring, DIP switches, code 
+upload, and first power-up expectations.
+
+-------------------------------------------------------------------------------
+REQUIRED COMPONENTS (MINIMUM BUILD)
+-------------------------------------------------------------------------------
+
+- Arduino Mega 2560
+- 2x RC Controllers + 2x 6-channel Receivers (e.g., FlySky, HotRC)
+- Sabertooth 2x32 motor controller (drive)
+- SyRen 10 motor controller (dome)
+- SparkFun MP3 Trigger (optional but recommended)
+- 5V regulated power supply (Arduino + receivers)
+- 12V (or higher) power supply (motors + MP3 board)
+
+-------------------------------------------------------------------------------
+WIRING SUMMARY
+-------------------------------------------------------------------------------
+
+Controller A (Drive):
+- CH1A → Pin 2 (Drive Turn) [Interrupt]
+- CH2A → Pin 3 (Drive Fwd/Rev) [Interrupt]
+- CH3A → Pin 22
+- CH4A → Pin 24
+- CH5A → Pin 26
+- CH6A → Pin 28
+
+Controller B (Dome + Combo):
+- CH1B → Pin 21 (Dome Turn) [Interrupt]
+- CH2A → Pin 23
+- CH3B → Pin 25
+- CH4B → Pin 27
+- CH5B → Pin 29
+- CH6B → Pin 31
+
+Serial Outputs:
+- TX1 (Pin 18) → MP3 Trigger RX
+- TX2 (Pin 16) → Sabertooth & SyRen S1 line (shared)
+- TX3 (Pin 14) → MarcDuino RX (if using dual-board setup)
+
+Other:
+- Pin 13 → Mode LED (blinks 1–4 times depending on mode)
+
+-------------------------------------------------------------------------------
+DIP SWITCH SETTINGS
+-------------------------------------------------------------------------------
+
+Sabertooth 2x32:
+- Switches: 1-OFF, 2-OFF, 3-ON, 4-ON, 5-ON, 6-ON
+- Address = 128 (default)
+
+SyRen 10:
+- Switches: 1-OFF, 2-OFF, 3-ON, 4-ON, 5-OFF, 6-ON
+- Address = 129
+
+Ensure common ground (GND) between Arduino, MP3, Sabertooth, and SyRen.
+
+-------------------------------------------------------------------------------
+CODE UPLOAD & FIRST BOOT
+-------------------------------------------------------------------------------
+
+1. Open the Shadow-RC project in the Arduino IDE
+2. Select Board: "Arduino Mega or Mega 2560"
+3. Select the correct COM port
+4. Upload the main sketch
+
+On first boot:
+- Pin 13 LED blinks 1 time (Manual Mode)
+- TX2 sends 0xAA sync byte to motor controllers
+- MP3 track 0255.mp3 may play if the MP3 Trigger is wired and active
+- Joysticks should control drive and dome immediately
+
+-------------------------------------------------------------------------------
+FIRST THINGS TO TEST
+-------------------------------------------------------------------------------
+
+1. Move drive joystick → verify motor response
+2. Move dome joystick → verify dome motor spins
+3. Tap CH3–CH5 → test MP3 triggers
+4. Press and hold slightly CH6 → momentary MP3 should trigger
+5. Try combo: Joystick B DOWN + CH6A → A combo should activate, you should see it named in the serial monitor during debugging
+
+-------------------------------------------------------------------------------
+NEXT STEP
+-------------------------------------------------------------------------------
+
+Once your system is responding correctly, move on to:
+- Assigning combos (see ComboHandler.cpp)
+- Setting mode change combos (1–4)
+- Configuring MP3 files (named 0300.mp3, 0351.mp3, etc.)
+- Enabling MarcDuino support if using lighting/panels
+
+For full details, refer to the Shadow-RC Builder's Guide.

@@ -1,0 +1,67 @@
+=========================================
+🔧 Sabertooth & SyRen DIP Switch Settings
+=========================================
+
+This document helps you configure the DIP switches on your Sabertooth 2x32 and SyRen 10 motor controllers for use with the Shadow-RC R2-D2 system.
+
+These settings are critical for ensuring proper operation using **packetized serial communication** over Serial2 (TX2).
+
+=============================
+🛠 Sabertooth 2x32 (Drive + Turn)
+=============================
+
+Used in Shadow-RC to control R2-D2’s drive motors (forward/reverse + left/right).
+Configured in **Packetized Serial Mode, Address 128**.
+
+DIP Switch Settings:
+---------------------
+SW1:   OFF    → Enables Packetized Serial Mode
+SW2:   OFF    → Packetized Serial Mode
+SW3:   ON     → Address Bit (Part of Address 128)
+SW4:   ON     → Address Bit
+SW5:   ON     → Address Bit
+SW6:   ON     → Address Bit
+
+Explanation:
+- These DIP switches configure the Sabertooth for **Address 128** in packetized serial mode.
+- All commands are sent via **TX2 (pin 16)** from the Arduino using the Sabertooth library.
+- This allows reliable, daisy-chained communication to both motor controllers.
+
+====================
+🛠 SyRen 10 (Dome Motor)
+====================
+
+Used for dome rotation with a single signal wire via packetized serial.
+Configured in **Packetized Serial Mode, Address 129**.
+
+DIP Switch Settings:
+---------------------
+SW1:   OFF    → Enables Packetized Serial Mode
+SW2:   OFF    → Packetized Serial Mode
+SW3:   ON     → Address Bit (Part of Address 129)
+SW4:   OFF    → Address Bit
+SW5:   ON     → Address Bit
+SW6:   ON     → Address Bit
+
+Explanation:
+- The SyRen receives its serial signal via a **daisy chain** from the Sabertooth (S1 ➜ S1).
+- It must be assigned **Address 129** to respond correctly to dome commands.
+- DIP switch settings represent the binary form of 129 (`10000001`), where DIP switches 3, 5, and 6 are ON.
+
+==========================
+📌 Summary for Quick Setup
+==========================
+
+Sabertooth 2x32 (Drive):
+  [SW1: OFF] [SW2: OFF] [SW3: ON] [SW4: ON] [SW5: ON] [SW6: ON]
+
+SyRen 10 (Dome):
+  [SW1: OFF] [SW2: OFF] [SW3: ON] [SW4: OFF] [SW5: ON] [SW6: ON]
+
+⚠️ Be sure to power off the controllers before changing DIP switch settings.
+✅ After setting switches, connect Arduino TX2 to Sabertooth S1, then daisy chain Sabertooth S1 ➜ SyRen S1.
+
+=====================================
+🌟 May your droid run smooth and true!
+=====================================
+

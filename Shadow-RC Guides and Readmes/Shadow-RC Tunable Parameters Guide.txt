@@ -1,0 +1,130 @@
+===============================================================================
+              SHADOW-RC TUNABLE PARAMETERS – MODE ADJUSTMENT GUIDE
+===============================================================================
+
+This reference lists the most commonly adjusted parameters in Shadow-RC.
+Use it to fine-tune the droid’s behavior in each mode for speed, smoothness,
+personality, or performance. Each parameter is fully documented with:
+- What it controls
+- Recommended change amounts
+- Where it’s found
+
+-------------------------------------------------------------------------------
+GLOBAL NOTES
+-------------------------------------------------------------------------------
+
+✓ All modes (Manual, Dance, Hybrid, Automated) have their own `.cpp` file  
+✓ Parameters are independent—adjusting one mode doesn’t affect the others  
+✓ Use small changes (±5 to 10) for precise tuning  
+✓ Reupload the code after each change and test live
+
+-------------------------------------------------------------------------------
+▌ ManualMode.cpp / HybridMode.cpp / DanceMode.cpp
+-------------------------------------------------------------------------------
+
+PARAMETER        | PURPOSE
+-----------------|-------------------------------------------------------------
+`speedLimit`     | Caps maximum drive speed  
+                 | Range: 40 (slow) to 127 (full speed)  
+                 | Default: ~89 (safe but snappy)  
+                 | Adjust by ±5 to fine-tune responsiveness
+
+`expoCurve`      | Applies exponential curve to joystick input  
+                 | Range: 1.0 (linear) to 3.0+ (soft start, sharp top-end)  
+                 | Default: 2.0–2.5  
+                 | Adjust by ±0.2 increments
+
+`domeSpeedLimit` | Limits dome motor speed (via SyRen)  
+                 | Range: 30–100  
+                 | Default: 65–75  
+                 | Adjust by ±5 to slow or quicken dome movement
+
+`deadzone`       | Ignores tiny joystick movement (prevents twitch)  
+                 | Range: 5–20 (in joystick units)  
+                 | Default: 8–10  
+                 | Adjust by ±2
+
+`killSwitchEngaged` (bool)  
+                 | Global safety flag—set false for normal motion  
+                 | You don’t usually change this manually
+
+-------------------------------------------------------------------------------
+▌ HybridMode.cpp / AutomatedMode.cpp (Automation Behavior)
+-------------------------------------------------------------------------------
+
+`randomDelayMin` | Minimum time between random dome/sound actions (ms)  
+                 | Range: 2000–15000  
+                 | Default: ~5000  
+                 | Adjust by ±1000ms
+
+`randomDelayMax` | Maximum time between random actions (ms)  
+                 | Range: 5000–30000  
+                 | Default: ~12000  
+                 | Adjust by ±2000ms
+
+`autoDomeActive` | Enables or disables dome automation  
+                 | Set to false to disable dome motion in Hybrid/Automated modes
+
+`autoSoundActive`| Enables or disables auto MP3 playback  
+                 | Set to false to mute background sound in Hybrid/Automated modes
+
+-------------------------------------------------------------------------------
+▌ MP3Handler.cpp
+-------------------------------------------------------------------------------
+
+`MP3_CATEGORY_*_START` / `*_END`  
+                 | Defines MP3 range per category  
+                 | Example: Talking = 0351–0381  
+                 | Update these numbers to match your SD card content
+
+`disableMP3Triggers()` / `enableMP3Triggers()`  
+                 | Disables or re-enables MP3 playback (used during MarcDuino modes)  
+                 | You can call these inside combos or mode logic as needed
+
+-------------------------------------------------------------------------------
+▌ ComboHandler.cpp
+-------------------------------------------------------------------------------
+
+Combo Numbers    | Each number maps to a specific joystick + button combo  
+                 | Range: 1–32  
+                 | Reassign actions by editing the `if (comboNumber == X)` blocks
+
+`sendMarcDuinoCommand(":OP05\r");`  
+                 | Send any ASCII command to MarcDuino from a combo trigger  
+                 | Replace with desired command string (see MarcDuino reference list)
+
+`MP3Handler::playTrack(0366);`  
+                 | Trigger a specific MP3 by number from any combo
+
+-------------------------------------------------------------------------------
+TUNING WORKFLOW TIPS
+-------------------------------------------------------------------------------
+
+✓ Always change ONE parameter at a time and test the result  
+✓ Keep notes of what you changed and why  
+✓ Don’t be afraid to duplicate a mode (e.g., make a “Show Mode”) for experimentation  
+✓ Use Serial Monitor for real-time feedback (drive values, combo triggers, etc.)  
+✓ Save stable versions of your code with date-based filenames (e.g., `ManualMode_0410.cpp`)
+
+-------------------------------------------------------------------------------
+EXAMPLE TUNING SESSION
+-------------------------------------------------------------------------------
+
+Goal: Make dome more responsive in Hybrid Mode but avoid twitchiness  
+→ Increase `domeSpeedLimit` from 70 to 80  
+→ Increase `deadzone` from 8 to 10  
+→ Reduce `randomDelayMin` from 5000 to 3000 (more active dome)
+
+Goal: Make Dance Mode extra safe for indoor events  
+→ Reduce `speedLimit` from 89 to 45  
+→ Keep `expoCurve` at 2.5 for gentle control  
+→ Reduce `domeSpeedLimit` to 60
+
+-------------------------------------------------------------------------------
+IN SUMMARY
+-------------------------------------------------------------------------------
+
+These parameters let you shape how your R2 unit behaves, drives, and feels.  
+Use them to create a droid that matches your personality, style, and environment.
+
+Make it smooth. Make it safe. Make it yours.

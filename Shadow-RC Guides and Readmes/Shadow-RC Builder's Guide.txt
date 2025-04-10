@@ -1,0 +1,1567 @@
+===============================================================================
+         SHADOW-RC BUILDER'S GUIDE - R2-D2 CONTROL SYSTEM (v1.0)
+===============================================================================
+
+This is the official builder's guide for the Shadow-RC v1.0 control system.
+
+It is written for all levels of R2 builders—whether you're a first-time 
+astromech crafter or a seasoned veteran looking for a clean, modular 
+RC control system.
+
+This guide will walk you through the wiring, configuration, operation, and 
+tuning of the Shadow-RC system. It includes support for both MarcDuino and 
+non-MarcDuino builds, and explains not only what to do, but why each 
+choice matters.
+
+Follow it carefully, and your droid will behave exactly as intended:
+- Smooth
+- Responsive
+- Safe
+- Packed with personality
+
+May the Force be with you, Builder.
+
+
+===============================================================================
+                       SHADOW-RC BUILDER'S GUIDE - TABLE OF CONTENTS
+===============================================================================
+
+Welcome / Introduction
+  - Purpose of the Shadow-RC system
+  - Who this guide is for
+  - How to use the guide
+  - MarcDuino and non-MarcDuino compatibility
+
+Chapter 1: System Overview
+  - What Shadow-RC is and what it controls
+  - Architecture overview
+  - Packetized serial motor control
+  - Multi-mode operation and combo input system
+
+Chapter 2: Hardware Required
+  - Core components (Arduino Mega, RC controllers, motor drivers, etc.)
+  - Optional components (MarcDuino, MP3 Trigger)
+  - Power requirements and configuration
+  - Why these components were chosen
+
+Chapter 3: Pin Assignments & Wiring Logic
+  - Full wiring layout and pin definitions
+  - Interrupt-based PWM input pins
+  - Serial output assignments (TX1, TX2, TX3)
+  - Mode LED pin
+  - MP3 Trigger and MarcDuino wiring
+  - Summary wiring diagram
+
+Chapter 4: DIP Switch Settings
+  - Packetized serial mode explanation
+  - Sabertooth 2x32 DIP switch configuration
+  - SyRen 10 DIP switch configuration
+  - Address mapping and troubleshooting tips
+
+Chapter 5: Operating Modes
+  - Manual Mode: full joystick control
+  - Dance Mode: safe, reduced-speed version
+  - Hybrid Mode: manual drive + automated dome/sound
+  - Automated Mode: idle personality mode
+  - Mode switching combos and LED feedback
+
+Chapter 6: MP3 Trigger Setup
+  - Wiring and power requirements
+  - SD card preparation and filename formatting
+  - Category-based sound mapping (Happy, Sad, Classic, etc.)
+  - Mode and startup sound triggers
+  - Sound suppression and combo control
+  - MP3 troubleshooting
+
+Chapter 7: Combo System (32 Slots)
+  - How combos work (joystick + button logic)
+  - Full mapping layout (1–32)
+  - Typical uses (mode changes, MarcDuino, MP3s)
+  - Toggle vs. momentary input behavior
+  - Combo debugging and configuration tips
+
+Chapter 8: MarcDuino Integration
+  - What MarcDuino is and what it controls
+  - Single-board vs. dual-board setups
+  - Serial command formatting and sending
+  - Combo-assigned MarcDuino sequences
+  - MP3 suppression during MarcDuino control
+  - Wiring checklist and troubleshooting
+
+Chapter 9: Customization & Tuning
+  - Tunable parameters (speed limits, expo curves, delay ranges)
+  - Editing mode behavior (enterMode, runMode, exitMode)
+  - Creating new combo actions
+  - Making your own custom modes
+  - Best practices for editing and backing up code
+
+Chapter 10: Startup Behavior & Kill Switch Logic
+  - Boot sequence and hardware initialization
+  - Sync byte transmission for motor controllers
+  - Mode LED indicator
+  - Kill switch combo input logic
+  - Global flag system and safety overrides
+  - Kill switch recovery and audio feedback
+
+Chapter 11: Troubleshooting & Diagnostics
+  - Step-by-step diagnostic strategy
+  - Common symptoms and their causes:
+      - Motors not responding
+      - Dome not moving
+      - Combos not triggering
+      - MP3s not playing
+      - MarcDuino not responding
+  - System-wide safety and preflight checklist
+
+Chapter 12: Advanced Builder Tools & Final Tips
+  - Serial debug techniques
+  - Logging combo activity
+  - Using a centralized Config.h file
+  - Isolated test sketches for rapid diagnosis
+  - Event prep and field troubleshooting
+  - Ideas for future expansion
+  - Final encouragement and project vision
+
+===============================================================================
+
+
+===============================================================================
+                           CHAPTER 1: SYSTEM OVERVIEW
+===============================================================================
+
+Shadow-RC is a modular, Arduino Mega–based control system designed to manage 
+all primary functions of an R2-D2 astromech unit. It is built for reliability, 
+ease of use, and expandability.
+
+At its core, Shadow-RC provides:
+
+- Joystick-based manual control
+- Fully automated behavior modes
+- Integrated sound playback
+- Optional MarcDuino support for servos and lights
+
+-------------------------------------------------------------------------------
+INPUT SYSTEM
+-------------------------------------------------------------------------------
+
+The system is built around **two RC controllers**, giving you dual-joystick 
+input and a wide range of button and combo options. It uses **interrupt-based 
+PWM input reading** to accurately capture joystick and button signals, ensuring 
+smooth and precise control—even during fast or complex movements.
+
+-------------------------------------------------------------------------------
+SERIAL COMMUNICATION
+-------------------------------------------------------------------------------
+
+Shadow-RC interfaces with the rest of the droid via dedicated serial protocols:
+
+- **Packetized Serial** (TX2): 
+    Used for Sabertooth and SyRen motor drivers. It provides reliable digital 
+    motor control, avoids analog drift, and supports independent control of 
+    dome and drive motors.
+
+- **Hardware Serial Ports** (TX1, TX2, TX3): 
+    Used to communicate with the MP3 Trigger and MarcDuino (if installed). 
+    These ports ensure fast, collision-free communication and avoid delays 
+    caused by software timing.
+
+-------------------------------------------------------------------------------
+OPERATIONAL MODES
+-------------------------------------------------------------------------------
+
+Shadow-RC supports **four main control modes**, selectable via combo inputs:
+
+  1. MANUAL MODE
+     - Joystick-only control of dome and drive.
+     - Ideal for precision driving and testing.
+
+  2. DANCE MODE
+     - Reduced speed manual mode.
+     - Designed for performances, parades, and public safety.
+
+  3. HYBRID MODE
+     - Manual drive with automated dome motion and MP3 playback.
+     - Great for events where hands-free dome behavior adds life.
+
+  4. AUTOMATED MODE
+     - Stationary R2 with randomized dome and sound behavior.
+     - Perfect for idle displays or interaction zones.
+
+Each mode is coded independently and can be tuned by editing its respective 
+file (e.g., `ManualMode.cpp`, `DanceMode.cpp`, etc.).
+
+-------------------------------------------------------------------------------
+COMBO INPUT SYSTEM
+-------------------------------------------------------------------------------
+
+Shadow-RC features a **32-slot combo system**, activated by joystick + button 
+pairings across both RC controllers.
+
+These combos can trigger:
+
+- Mode switching
+- Sound playback
+- MarcDuino commands
+- Kill switch toggling
+- Custom features (e.g., servos, lights, effects)
+
+-------------------------------------------------------------------------------
+ARCHITECTURE PHILOSOPHY
+-------------------------------------------------------------------------------
+
+Shadow-RC is designed to be:
+
+- Flexible
+- Fail-safe
+- Fully configurable
+
+You can:
+
+- Run without MarcDuino
+- Operate with just one RC controller
+- Reassign pins or serial ports
+- Suppress MP3 playback when needed
+
+It is not a closed black box—every file is open, teachable, and tunable. 
+This is a system you can grow with as your skills grow.
+
+-------------------------------------------------------------------------------
+WHAT'S NEXT
+-------------------------------------------------------------------------------
+
+In the next chapter, we’ll break down the hardware you’ll need and explain how 
+each part fits into the system from both a wiring and logic perspective.
+
+
+
+===============================================================================
+                           CHAPTER 2: HARDWARE REQUIRED
+===============================================================================
+
+This chapter lists the physical components required to build a complete 
+Shadow-RC system and explains why each part is used, how it integrates into 
+the system, and what role it plays in controlling your R2-D2 droid.
+
+All components are chosen based on availability, compatibility with standard 
+R2-D2 builds, and reliability in real-world usage. Optional components (like 
+MarcDuino) are fully supported but not required.
+
+-------------------------------------------------------------------------------
+CORE COMPONENTS (REQUIRED)
+-------------------------------------------------------------------------------
+
+● Arduino Mega 2560
+  - Acts as the central brain of the droid.
+  - Selected for its multiple hardware serial ports (Serial1, Serial2, Serial3),
+    large memory, and compatibility with most Arduino libraries.
+  - Handles all inputs (joystick, buttons), outputs (motor commands, MP3,
+    MarcDuino), and mode logic.
+
+● RC Transmitters (2)
+  - Dual controllers give you separate joystick input for dome and drive,
+    plus additional buttons (CH3–CH6) for triggering combos.
+  - Each controller connects to its own RC receiver, wired into the Arduino.
+  - Recommended: HotRC, FlySky FS-i6, or any system with at least 6 channels.
+
+● RC Receivers (2)
+  - Each receiver provides PWM output signals (one per channel).
+  - One receiver is used for drive (Controller A), the other for dome and
+    combo inputs (Controller B).
+
+● Sabertooth 2x32 Motor Controller
+  - Drives R2's main wheel motors (left and right).
+  - Controlled via packetized serial, allowing precise and safe bidirectional control.
+  - DIP switch-configurable for serial control (see Chapter 4).
+
+● SyRen 10 Motor Controller
+  - Drives the dome motor (rotation only).
+  - Controlled with the same packetized serial bus as the Sabertooth.
+  - Small, reliable, and tunable for smooth dome performance.
+
+● SparkFun MP3 Trigger
+  - Optional but recommended for standalone sound playback.
+  - Controlled via Serial1 (TX1, pin 18) using ASCII commands.
+  - Reads MP3 files from an onboard microSD card.
+  - Triggered by RC buttons, combos, or automated sequences.
+
+● Power System
+  - You will need regulated 5V and 12V power sources.
+  - 5V is used for the Arduino, RC receivers, and logic-level components.
+  - 12V (or higher) is typically used for the Sabertooth/SyRen motor drivers
+    and MP3 amplifier.
+  - Be sure to include fuse protection and master kill switches in your power wiring.
+
+-------------------------------------------------------------------------------
+OPTIONAL COMPONENTS (MARCDUINO BUILDS)
+-------------------------------------------------------------------------------
+
+● MarcDuino Dome + Body Boards
+  - Used in traditional R2 builders club droids.
+  - Receive ASCII commands over Serial3 (TX3, pin 14) to control:
+      ▸ Panel servos
+      ▸ Dome and body lighting
+      ▸ MarcDuino-triggered MP3 sequences
+  - Can be used in addition to or in place of the SparkFun MP3 Trigger.
+
+  ▸ Single-Board Mode:
+    - Connect Arduino TX1 (pin 18) to the Dome MarcDuino.
+    - All dome lights and sounds are handled directly.
+
+  ▸ Dual-Board Mode:
+    - Connect Arduino TX3 (pin 14) to the Body MarcDuino.
+    - The body board relays commands to the dome via I2C.
+
+  - Shadow-RC supports both wiring options.
+
+-------------------------------------------------------------------------------
+WHY THESE PARTS?
+-------------------------------------------------------------------------------
+
+- Arduino Mega is used because it offers 4 hardware serial ports. 
+  Cheaper boards (like Uno or Nano) do not have enough ports for motor drivers, 
+  MP3, and MarcDuino simultaneously.
+
+- Sabertooth and SyRen support packetized serial, a more reliable and precise 
+  control method than analog or RC mode. This gives you smooth ramping, safety 
+  features, and fewer wiring complications.
+
+- Dual RC controllers greatly expand input flexibility. One controller handles 
+  drive, the other handles dome and combo triggers. This is inspired by proven 
+  club setups like ShadowMD.
+
+- MP3 Trigger simplifies sound playback and gives you full control over sound 
+  categories. It is also completely independent of MarcDuino, making it ideal 
+  for non-MarcDuino builds.
+
+- MarcDuino is optional but well-supported. If your build includes it, 
+  Shadow-RC can send all necessary commands to activate panels, lights, 
+  and MarcDuino audio.
+
+-------------------------------------------------------------------------------
+WHAT'S NEXT
+-------------------------------------------------------------------------------
+
+In the next chapter, we’ll cover how to wire all these components to the 
+Arduino Mega and explain why specific pins were chosen.
+
+
+===============================================================================
+                CHAPTER 3: PIN ASSIGNMENTS & WIRING LOGIC
+===============================================================================
+
+This chapter explains exactly how to wire the Arduino Mega to the rest of your 
+Shadow-RC system. We’ll cover which pins are used, what devices they connect to, 
+and—most importantly—why these specific pins were chosen.
+
+Shadow-RC was designed to be reliable and predictable even in noisy, real-world 
+conditions. This means choosing pins that support the necessary interrupt or 
+serial features at the hardware level—not just what “works,” but what works best.
+
+-------------------------------------------------------------------------------
+PWM INPUT PINS (RC SIGNAL READING)
+-------------------------------------------------------------------------------
+
+These pins capture the PWM signal from your RC receivers. PWM values represent 
+stick positions and button states. These signals are processed using interrupts 
+for accurate timing, independent of loop speed.
+
+Joystick Inputs:
+  - Pin 2   → CH1A (Drive Turn) — Controller A joystick (Left/Right)
+  - Pin 3   → CH2A (Drive Fwd/Back) — Controller A joystick (Up/Down)
+  - Pin 21  → CH1B (Dome Turn) — Controller B joystick (Left/Right)
+  - Pin 23  → CH2B — Controller B joystick (Up/Down)
+
+Button Inputs (CH3–CH6):
+  - Pin 22  → CH3_PIN_A (Controller A CH3)
+  - Pin 24  → CH4_PIN_A (Controller A CH4)
+  - Pin 26  → CH5_PIN_A (Controller A CH5)
+  - Pin 28  → CH6_PIN_A (Controller A CH6)
+  - Pin 25  → CH3_PIN_B (Controller B CH3)
+  - Pin 27  → CH4_PIN_B (Controller B CH4)
+  - Pin 29  → CH5_PIN_B (Controller B CH5)
+  - Pin 31  → CH6_PIN_B (Controller B CH6)
+
+These pins were selected to provide:
+  - Easy layout and traceability
+  - Avoidance of interrupt and serial conflicts
+  - Compatibility with `pulseIn()` and timing functions
+
+⚠️ Joystick inputs (Pins 2, 3, 21) require **hardware interrupts**.
+⚠️ Button inputs (Pins 22–31) do **not** require interrupts, but must support 
+    accurate digital timing.
+
+Interrupt-capable pins on the Arduino Mega:
+  - Pins 2, 3 → INT4, INT5
+  - Pins 18–21 → INT3–INT0
+
+Using non-interrupt pins for joystick input will cause laggy or unreliable control.
+
+-------------------------------------------------------------------------------
+SERIAL OUTPUT PINS (HARDWARE SERIAL)
+-------------------------------------------------------------------------------
+
+The Arduino Mega has 4 hardware UART ports. This ensures clean, non-blocking 
+communication with all serial devices.
+
+  - TX1 (Pin 18) → MP3 Trigger
+  - TX2 (Pin 16) → Sabertooth 2x32 + SyRen 10 (shared serial line)
+  - TX3 (Pin 14) → MarcDuino Body (dual-board setup)
+
+Why hardware serial?
+  - More stable than SoftwareSerial
+  - Avoids USB conflict and CPU blocking
+
+Device Command Types:
+  - MP3 Trigger     → ASCII (e.g., `T0351\r`)
+  - Sabertooth/SyRen → Packetized binary (requires sync byte)
+  - MarcDuino       → ASCII (e.g., `:SE10\r`)
+
+-------------------------------------------------------------------------------
+LED STATUS PIN
+-------------------------------------------------------------------------------
+
+  - Pin 13 → Onboard Mode Indicator LED
+
+Blink Count Mapping:
+  - 1 blink → Manual Mode
+  - 2 blinks → Dance Mode
+  - 3 blinks → Hybrid Mode
+  - 4 blinks → Automated Mode
+
+This gives a simple visual confirmation of current mode without needing Serial Monitor.
+
+-------------------------------------------------------------------------------
+MP3 TRIGGER WIRING NOTES
+-------------------------------------------------------------------------------
+
+- TX1 (pin 18) → MP3 Trigger RX
+- GND → Shared with MP3 Trigger
+- RX1 (pin 19) is optional (only used for two-way debug)
+
+MP3 File Notes:
+  - All filenames must use 4-digit format (e.g., `0345.mp3`)
+  - Files must be in the root directory of a FAT32 SD card
+
+-------------------------------------------------------------------------------
+MOTOR CONTROLLER SERIAL BUS
+-------------------------------------------------------------------------------
+
+- TX2 (pin 16) → Shared line to:
+    ▸ Sabertooth 2x32
+    ▸ SyRen 10
+
+Requirements:
+  - Packetized serial mode enabled (see Chapter 4)
+  - GND shared across all motor control hardware
+
+Each controller is addressed separately:
+  - Sabertooth → Address 128
+  - SyRen      → Address 129
+
+-------------------------------------------------------------------------------
+MARC DUINO WIRING (OPTIONAL)
+-------------------------------------------------------------------------------
+
+Single-Board Setup:
+  - TX1 (pin 18) → Dome MarcDuino RX
+
+Dual-Board Setup:
+  - TX3 (pin 14) → Body MarcDuino RX
+  - Body MarcDuino relays to Dome via I2C
+
+Other Requirements:
+  - GND from Arduino must connect to MarcDuino GND
+
+MarcDuino listens for:
+  - `:SE10\r` → Open specific panel
+  - `:OP05\r` → Run custom sequence
+
+-------------------------------------------------------------------------------
+SUMMARY DIAGRAM (TEXTUAL)
+-------------------------------------------------------------------------------
+
+[Controller A Receiver] → Pin 2 (Turn)
+                        → Pin 3 (Drive)
+
+[Controller B Receiver] → Pin 21 (Dome)
+
+Pin 16 (TX2) → Sabertooth + SyRen (shared line)
+Pin 18 (TX1) → MP3 Trigger
+Pin 14 (TX3) → MarcDuino Body (if installed)
+Pin 13       → Mode LED Indicator
+
+-------------------------------------------------------------------------------
+WHAT'S NEXT
+-------------------------------------------------------------------------------
+
+In the next chapter, we’ll review how to set the DIP switches for Sabertooth 
+and SyRen motor drivers to match this configuration.
+
+
+
+===============================================================================
+                          CHAPTER 4: DIP SWITCH SETTINGS
+===============================================================================
+
+This chapter explains how to correctly configure the DIP switches on your motor 
+controllers: the Sabertooth 2x32 (for drive motors) and the SyRen 10 
+(for dome rotation).
+
+Setting these switches properly is essential for enabling packetized serial 
+mode, which is the communication method Shadow-RC uses to talk to these 
+controllers.
+
+⚠️ Incorrect DIP switch settings are one of the most common causes of motor 
+   control issues—so let’s go through it carefully.
+
+-------------------------------------------------------------------------------
+WHAT IS PACKETIZED SERIAL MODE?
+-------------------------------------------------------------------------------
+
+Packetized serial is a robust, digital communication protocol supported by all 
+Dimension Engineering motor controllers. It allows you to:
+
+- Send commands to multiple motor drivers over a single serial wire
+- Assign each controller a unique device address
+- Avoid signal noise and voltage drift common in analog/PWM setups
+- Use features like safe startup (requires sync byte 0xAA) and current limiting
+
+Shadow-RC uses packetized serial on **TX2 (pin 16)** to control both the 
+Sabertooth and SyRen motor controllers.
+
+-------------------------------------------------------------------------------
+SABERTOOTH 2X32 DIP SWITCH SETTINGS
+-------------------------------------------------------------------------------
+
+There are 6 DIP switches on the Sabertooth 2x32. Set them as follows to enable 
+packetized serial mode:
+
+| Switch | Setting | Purpose                       |
+|--------|---------|-------------------------------|
+|   1    |   OFF   | Required for serial mode      |
+|   2    |   OFF   | Required for serial mode      |
+|   3    |   ON    | Enables packetized serial     |
+|   4    |   ON    | Address bit 1 (binary: 1)     |
+|   5    |   ON    | Address bit 2 (binary: 1)     |
+|   6    |   ON    | Address bit 3 (binary: 1)     |
+
+This gives the Sabertooth the default **device address of 128**.
+
+⚠️ The Sabertooth will not respond to commands until it receives the 
+    sync byte 0xAA. Shadow-RC automatically sends this during setup.
+
+-------------------------------------------------------------------------------
+SYREN 10 DIP SWITCH SETTINGS
+-------------------------------------------------------------------------------
+
+The SyRen 10 has 6 DIP switches as well. Use the following configuration to 
+enable packetized serial mode:
+
+| Switch | Setting | Purpose                       |
+|--------|---------|-------------------------------|
+|   1    |   OFF   | Required for serial mode      |
+|   2    |   OFF   | Required for serial mode      |
+|   3    |   ON    | Enables packetized serial     |
+|   4    |   ON    | Address bit 1 (binary: 1)     |
+|   5    |   OFF   | Address bit 2 (binary: 0)     |
+|   6    |   ON    | Address bit 3 (binary: 1)     |
+
+This configuration sets the SyRen's **device address to 129**, distinct from 
+the Sabertooth.
+
+-------------------------------------------------------------------------------
+TIPS FOR SETTING DIP SWITCHES
+-------------------------------------------------------------------------------
+
+- Use a small plastic screwdriver or tweezers to avoid damaging the switches
+- Double-check settings against Dimension Engineering’s documentation
+- Set switches **before applying power**
+- Label each controller:
+    ▸ “Drive = 128”
+    ▸ “Dome = 129”
+- If motors aren’t responding, check the following:
+    ▸ Are the DIP switches correct?
+    ▸ Is GND shared across all devices?
+    ▸ Is TX2 wired correctly from Arduino?
+    ▸ Was the sync byte sent (0xAA)?
+
+-------------------------------------------------------------------------------
+WHAT'S NEXT
+-------------------------------------------------------------------------------
+
+In the next chapter, we’ll explore the four operating modes of Shadow-RC and 
+explain how each one behaves, when to use it, and how it affects drive, dome, 
+and sound behavior.
+
+
+
+===============================================================================
+                             CHAPTER 5: OPERATING MODES
+===============================================================================
+
+Shadow-RC supports four fully distinct control modes, each tailored to different 
+use cases and user environments. These modes govern how your R2 unit drives, 
+speaks, and behaves.
+
+- Only one mode is active at a time
+- Modes are switched using **combo inputs**
+- Each mode is coded separately (e.g., `ManualMode.cpp`, `DanceMode.cpp`) and 
+  can be customized independently
+
+Let’s break down what each mode does, why it exists, and how to tune it.
+
+-------------------------------------------------------------------------------
+MODE 1: MANUAL MODE
+-------------------------------------------------------------------------------
+
+Manual Mode gives you **complete joystick control** over both drive and dome. 
+This is the most direct and responsive mode—ideal for testing, precise 
+positioning, or full-performance control.
+
+Features:
+  - CH1A (Left/Right) → Drive turning
+  - CH2A (Up/Down)    → Drive forward/reverse
+  - CH1B (Left/Right) → Dome rotation
+  - Exponential input curves for smooth acceleration
+  - Deadzone filtering to eliminate twitchy response
+  - Adjustable speed limits for testing or safety
+
+Why Use It?
+  - Best mode for first-time setup, live control, or precise navigation
+  - All actions come directly from your input (no automation)
+
+Tuning Tips:
+  - Use `expoCurve` and `speedLimit` to shape feel and responsiveness
+  - A safe test speed is around **89** (max = 127), but can be raised when confident
+
+-------------------------------------------------------------------------------
+MODE 2: DANCE MODE
+-------------------------------------------------------------------------------
+
+Dance Mode is a **low-speed version of Manual Mode**. It provides full joystick 
+control, but limits movement to keep the droid slow and safe in performance 
+environments.
+
+Features:
+  - Same joystick mappings as Manual Mode
+  - Lower speed cap (e.g., 45 out of 127)
+  - Dome rotation behaves the same as Manual Mode
+
+Why Use It?
+  - Ideal for parades, stage shows, or crowded areas
+  - Reduces risk while maintaining full user control
+
+Tuning Tips:
+  - Try higher `expoCurve` values for extra smoothness
+  - Add custom combo-triggered dance moves or MP3 sequences
+
+-------------------------------------------------------------------------------
+MODE 3: HYBRID MODE
+-------------------------------------------------------------------------------
+
+Hybrid Mode gives you **manual drive** with **automated dome and sound behavior**. 
+R2 comes alive while you focus on steering.
+
+Features:
+  - Manual drive via CH1A + CH2A
+  - Randomized dome movement (spins, sweeps, jitters)
+  - Random MP3 playback from categories at intervals
+
+Why Use It?
+  - Great for casual driving or event appearances where lifelike presence matters
+  - Keeps one hand free while R2 adds personality automatically
+
+MarcDuino Considerations:
+  - If installed and in “Quiet Mode,” MP3s from Shadow-RC are suppressed
+
+Tuning Tips:
+  - Adjust dome randomness and delays in `HybridMode.cpp`
+  - Increase dome deadzone or reduce acceleration if it feels too twitchy
+
+-------------------------------------------------------------------------------
+MODE 4: AUTOMATED MODE
+-------------------------------------------------------------------------------
+
+Automated Mode makes your droid behave independently while staying still. Perfect 
+for museum displays, idle booths, or background behavior.
+
+Features:
+  - No drive control—motors disabled
+  - Dome rotates on a timer
+  - MP3s play randomly from designated categories
+
+Why Use It?
+  - Creates a lifelike idle presence with no user input
+  - Simulates personality without movement
+
+Tuning Tips:
+  - Adjust delay intervals for dome and MP3s to create a believable rhythm
+  - Add servo/light triggers if MarcDuino is active
+
+-------------------------------------------------------------------------------
+HOW TO SWITCH MODES
+-------------------------------------------------------------------------------
+
+Each mode is activated by triggering a **joystick + button combo** (see Chapter 7).
+
+Visual & Audio Feedback:
+  - Pin 13 onboard LED blinks to show current mode:
+      ▸ 1 blink  = Manual Mode
+      ▸ 2 blinks = Dance Mode
+      ▸ 3 blinks = Hybrid Mode
+      ▸ 4 blinks = Automated Mode
+
+  - Shadow-RC plays a confirmation MP3 on mode change:
+      ▸ 0501.mp3 → Manual
+      ▸ 0502.mp3 → Dance
+      ▸ 0503.mp3 → Hybrid
+      ▸ 0504.mp3 → Automated
+
+  - These sounds are skipped if MarcDuino overrides them
+
+-------------------------------------------------------------------------------
+WHAT'S NEXT
+-------------------------------------------------------------------------------
+
+In the next chapter, we’ll break down the MP3 trigger system—how to wire it, 
+organize files, and configure categories for randomized or manual playback.
+
+
+===============================================================================
+                            CHAPTER 6: MP3 TRIGGER SETUP
+===============================================================================
+
+The Shadow-RC system supports two types of sound playback systems:
+
+  1. SparkFun MP3 Trigger (covered here)
+  2. MarcDuino audio system (covered in Chapter 8)
+
+This chapter focuses on the SparkFun MP3 Trigger, which is ideal for 
+non-MarcDuino builds or builders who want full control over sound categories.
+
+The MP3 Trigger plays tracks from a microSD card in response to **serial commands** 
+sent over **TX1 (pin 18)** using plain ASCII text.
+
+-------------------------------------------------------------------------------
+WIRING THE MP3 TRIGGER
+-------------------------------------------------------------------------------
+
+Required Connections:
+  - TX1 (pin 18) → MP3 Trigger RX
+  - GND (shared) → MP3 Trigger GND
+  - Power        → 5V (regulated)
+
+Optional:
+  - Small amplifier + speaker connected to audio out
+  - RX1 (pin 19) for debugging (not required in normal operation)
+
+Important Notes:
+  - The MP3 Trigger expects **commands ending with carriage return (`\r`)**
+  - Shadow-RC handles this formatting internally
+
+-------------------------------------------------------------------------------
+SD CARD PREPARATION
+-------------------------------------------------------------------------------
+
+The MP3 Trigger requires:
+
+  - A FAT32-formatted microSD card
+  - All MP3 files placed in the **root directory** (no folders)
+  - Filenames must be numeric and four digits:
+      ▸ Correct: 0351.mp3
+      ▸ Incorrect: "track35.mp3", "songs/0351.mp3"
+
+Shadow-RC sends commands like: T255\r → plays 255.mp3
+
+
+-------------------------------------------------------------------------------
+SOUND CATEGORIES & FILE RANGES
+-------------------------------------------------------------------------------
+
+Shadow-RC organizes MP3s into 8 categories, each mapped to a track range:
+
+| Category | Range     | Trigger Channel     | Type      |
+|----------|-----------|----------------------|-----------|
+| Happy    | 0300–0330 | CH3 A                | Toggle    |
+| Sad      | 0331–0350 | CH4 A                | Toggle    |
+| Talking  | 0351–0381 | CH5 A                | Toggle    |
+| Yelling  | 0382–0409 | CH6 A                | Momentary |
+| Classic  | 0410–0427 | CH3 B                | Toggle    |
+| Dance    | 0428–0443 | CH4 B                | Toggle    |
+| Singing  | 0444–0459 | CH5 B                | Toggle    |
+| Lines    | 0460–0471 | CH6 B                | Momentary |
+
+Toggle Inputs:
+  - Randomly select one track from the category each time the button is toggled
+
+Momentary Inputs:
+  - Play a random sound only while the button is held (short pulse required)
+
+-------------------------------------------------------------------------------
+STARTUP & MODE CHANGE SOUNDS
+-------------------------------------------------------------------------------
+
+Special MP3s used for system events:
+
+| Event            | File Name   |
+|------------------|-------------|
+| Startup Sound    | 255.mp3    |
+| Manual Mode      | 231.mp3    |
+| Dance Mode       | 232.mp3    |
+| Hybrid Mode      | 233.mp3    |
+| Automated Mode   | 234.mp3    |
+
+These give audible feedback during boot and mode transitions.
+
+-------------------------------------------------------------------------------
+SOUND TRIGGER LOGIC
+-------------------------------------------------------------------------------
+
+MP3s may be triggered by:
+
+  - Direct button presses (CH3–CH6 from either controller)
+  - Joystick + button **combo inputs**
+  - Automated events (Hybrid or Automated Modes)
+
+Suppression Rules:
+  - If **MarcDuino** is in an “Awake+” mode, MP3s are **suppressed**
+  - When MarcDuino switches to “Quiet,” MP3s are **re-enabled**
+
+This avoids overlapping sound from two systems.
+
+-------------------------------------------------------------------------------
+TROUBLESHOOTING MP3 ISSUES
+-------------------------------------------------------------------------------
+
+▶ MP3s Do Not Play:
+  - Check wiring: TX1 → MP3 Trigger RX
+  - Confirm filenames are numeric and 4 digits (e.g., 0360.mp3)
+  - Ensure files are in root of FAT32 card
+  - Confirm 5V power is reaching the MP3 Trigger
+
+▶ Sounds Play but Don’t Match Expected Category:
+  - Verify file numbers fall within the expected category ranges
+  - Avoid large gaps between file numbers in a given category
+
+▶ MP3s Trigger Too Often or Not at All:
+  - CH6 momentary should pulse to ~1988µs
+  - Use Serial Monitor to debug PWM state detection
+  - Check if MP3 suppression is active due to MarcDuino mode
+
+-------------------------------------------------------------------------------
+WHAT'S NEXT
+-------------------------------------------------------------------------------
+
+In the next chapter, we’ll dive into the **combo system** that allows up to 
+32 unique input triggers using joystick + button layering.
+
+
+===============================================================================
+                      CHAPTER 7: COMBO SYSTEM (32 SLOTS)
+===============================================================================
+
+One of the most powerful features of Shadow-RC is its **combo input system**.
+
+This system allows you to trigger **up to 32 unique actions** using joystick + 
+button pairings across two RC controllers. It’s a game changer for compact, 
+wireless control—no touchscreens or extra gadgets needed.
+
+Each combo combines a directional joystick movement with a button press on the 
+opposite controller.
+
+Think of it like a musical chord:
+  → You hold one input and tap another to trigger something special.
+
+-------------------------------------------------------------------------------
+HOW IT WORKS
+-------------------------------------------------------------------------------
+
+The combo system monitors the following:
+
+- **Joystick A (Controller A)**: Up / Down / Left / Right
+- **Joystick B (Controller B)**: Up / Down / Left / Right
+- **Buttons CH3–CH6** from both controllers
+
+Each pairing of one joystick direction + one button equals **one combo slot**.
+
+  ▸ 4 joystick directions × 4 button channels = 16 combos per joystick  
+  ▸ With 2 joysticks → 32 total combo slots
+
+-------------------------------------------------------------------------------
+COMBO MAPPING SUMMARY
+-------------------------------------------------------------------------------
+
+| Combo Range     | Triggered By                        | Combo Numbers |
+|------------------|--------------------------------------|----------------|
+| Combos 1–16     | Joystick B + Buttons A (CH3–CH6)     | 1–16           |
+| Combos 17–32    | Joystick A + Buttons B (CH3–CH6)     | 17–32          |
+
+Examples:
+  - Joystick B held UP + CH3 on Controller A → **Combo 1**
+  - Joystick B held LEFT + CH5 on Controller A → **Combo 11**
+  - Joystick A held DOWN + CH6 on Controller B → **Combo 32**
+
+Each combo can be assigned to **any custom action**:
+  - MP3 playback
+  - Mode switching
+  - MarcDuino command
+  - Servo movement or light trigger
+
+-------------------------------------------------------------------------------
+COMMON USES
+-------------------------------------------------------------------------------
+
+| Combo Range | Common Purpose                        |
+|-------------|----------------------------------------|
+| 1–4         | Mode Switching (Manual, Dance, etc.)   |
+| 5–8         | MarcDuino Mode Commands (Awake+, Quiet)|
+| 9–32        | MP3 triggers, lights, servos, effects   |
+
+→ All combo logic is defined in `ComboHandler.cpp`  
+→ Combos can be reassigned or expanded as needed
+
+-------------------------------------------------------------------------------
+BUTTON BEHAVIOR: TOGGLE VS. MOMENTARY
+-------------------------------------------------------------------------------
+
+- **CH3–CH5**: Toggle switches → Stay HIGH when flipped
+- **CH6**: Momentary button → Sends a short PWM pulse (~1988 µs)
+
+Shadow-RC includes logic to detect brief CH6 pulses for reliable momentary combos.  
+Perfect for fast sound triggers or timed effects.
+
+-------------------------------------------------------------------------------
+TECHNICAL NOTES
+-------------------------------------------------------------------------------
+
+- Combos are detected using **edge detection**
+- Joystick directions are tracked separately (A vs. B)
+- Each combo press includes a **debounce delay** to prevent double-triggers
+- Commands are **blocked** during active combo playback or MarcDuino sequences
+
+-------------------------------------------------------------------------------
+TROUBLESHOOTING COMBOS
+-------------------------------------------------------------------------------
+
+▶ Problem: Combo doesn’t trigger
+  - Ensure joystick is held BEFORE button is pressed
+  - Verify CH6 pulses around 1980–2000 µs
+  - Use Serial Monitor to debug detected combos (enable debug output)
+
+▶ Problem: Wrong combo is triggered
+  - Joystick drift may misread directions—try deadzone tuning
+  - Confirm that no duplicate combo numbers are assigned
+
+▶ Problem: Nothing happens
+  - Make sure the combo number maps to an action in `ComboHandler.cpp`
+  - Confirm that suppression or kill logic isn't blocking the action
+
+-------------------------------------------------------------------------------
+WHAT'S NEXT
+-------------------------------------------------------------------------------
+
+In the next chapter, we’ll cover how to integrate and configure **MarcDuino**, 
+if installed, to enable full dome panel, lighting, and audio command support.
+
+
+===============================================================================
+                          CHAPTER 8: MARCDUINO INTEGRATION
+===============================================================================
+
+Shadow-RC is fully compatible with **MarcDuino systems**. Whether you're using 
+a single dome board or a full dual-board setup (body + dome), Shadow-RC can 
+send all necessary serial commands to control panels, lights, and audio sequences.
+
+MarcDuino integration is **optional**. Shadow-RC works perfectly without it 
+(using the SparkFun MP3 Trigger instead). However, when included, Shadow-RC 
+provides smart **MP3 suppression** to prevent audio conflicts.
+
+-------------------------------------------------------------------------------
+WHAT IS MARCDUINO?
+-------------------------------------------------------------------------------
+
+MarcDuino is an Arduino-based control system created by the R2 Builders Club. 
+It provides:
+
+- Servo control for dome/body panels
+- Lighting effects (logic displays, PSIs, holos)
+- MP3 playback via I2C sound boards
+- Pre-programmed sequences triggered via serial commands
+
+Shadow-RC communicates with MarcDuino over a dedicated serial line (TX3 or TX1 
+depending on wiring).
+
+-------------------------------------------------------------------------------
+SINGLE-BOARD VS. DUAL-BOARD SETUPS
+-------------------------------------------------------------------------------
+
+▸ Single-Board Setup (Dome Only):
+  - TX1 (Pin 18) → Dome MarcDuino RX
+  - All commands go directly to the dome board
+
+▸ Dual-Board Setup (Body + Dome):
+  - TX3 (Pin 14) → Body MarcDuino RX
+  - Body board relays commands to the dome via I2C
+
+Shadow-RC supports both setups and adjusts its serial output formatting accordingly.
+
+-------------------------------------------------------------------------------
+COMMAND FORMATTING
+-------------------------------------------------------------------------------
+
+MarcDuino expects **plain-text ASCII commands** followed by a carriage return `\r`.
+
+Examples of valid commands:
+  - `:SE10\r` → Open a specific panel
+  - `:CL99\r` → Close all panels
+  - `:OP05\r` → Play sequence 5 (lights, servos, sound)
+  - `:RD01\r` → Change logic display pattern
+  - `:MTL1\r` → Play a dome light effect
+
+These commands are defined in `ComboHandler.cpp` and can be customized to suit 
+your setup.
+
+-------------------------------------------------------------------------------
+MODES & BEHAVIOR
+-------------------------------------------------------------------------------
+
+Typical combo assignments for MarcDuino modes:
+
+| Combo | Action         | Command Sent |
+|--------|----------------|---------------|
+|   5    | Awake+         | `:OP05\r`     |
+|   6    | Quiet Mode     | `:OP00\r`     |
+|   7    | Full Awake     | `:OP10\r`     |
+|   8    | Mid Awake      | `:OP06\r`     |
+
+- **Awake+**, **Full Awake**, and **Mid Awake** trigger MarcDuino sequences
+  and activate MP3 suppression
+- **Quiet Mode** (Combo 6) clears suppression and resumes MP3 playback
+
+-------------------------------------------------------------------------------
+MP3 SUPPRESSION LOGIC
+-------------------------------------------------------------------------------
+
+To avoid overlapping audio from MarcDuino and the MP3 Trigger:
+
+- On triggering Awake/Full/Mid modes, Shadow-RC runs:
+    ▸ `disableMP3Triggers();` → Blocks all MP3 playback
+
+- When Quiet Mode is triggered, Shadow-RC runs:
+    ▸ `enableMP3Triggers();` → Restores normal MP3 behavior
+
+This ensures that MarcDuino takes full control of sound during its active sequences.
+
+-------------------------------------------------------------------------------
+WIRING CHECKLIST
+-------------------------------------------------------------------------------
+
+▸ Single-Board Setup (Dome Only):
+  - TX1 (Pin 18) → Dome MarcDuino RX
+  - GND → Shared with MarcDuino
+
+▸ Dual-Board Setup (Body + Dome):
+  - TX3 (Pin 14) → Body MarcDuino RX
+  - Body board relays to dome internally via I2C
+
+⚠️ Use **only one TX line**: TX1 *or* TX3. Do not connect both.
+
+-------------------------------------------------------------------------------
+TROUBLESHOOTING MARCDUINO
+-------------------------------------------------------------------------------
+
+▶ Problem: Nothing Happens
+  - Confirm correct wiring: TX1 or TX3 (not both)
+  - Verify MarcDuino board has power and LEDs light up on boot
+  - Use Serial Monitor to confirm commands (e.g., `:OP05\r`) are sent
+
+▶ Problem: Sounds Overlap
+  - Ensure MP3 suppression runs after Combo 5/7/8
+  - Confirm Combo 6 resets suppression properly
+
+▶ Problem: Panels Don’t Respond
+  - Try sending manual `:SE10\r` and `:CL99\r` commands via test combos
+  - Ensure servos are connected and powered correctly
+
+-------------------------------------------------------------------------------
+WHAT'S NEXT
+-------------------------------------------------------------------------------
+
+In the next chapter, we’ll explore how to **customize Shadow-RC further** by 
+tuning movement parameters, editing mode behaviors, and creating new actions 
+using the combo system.
+
+
+
+===============================================================================
+                      CHAPTER 9: CUSTOMIZATION & TUNING
+===============================================================================
+
+Shadow-RC is designed to be more than just plug-and-play—it’s meant to be a 
+builder’s playground. This chapter explains how to fine-tune each part of the 
+system, create new behaviors, edit parameters, and customize how your droid 
+thinks and feels.
+
+Whether you're a beginner making simple tweaks or an advanced builder writing 
+your own dome animations, the system is fully open to modification.
+
+-------------------------------------------------------------------------------
+TUNABLE PARAMETERS (OVERVIEW)
+-------------------------------------------------------------------------------
+
+Most customization takes place in the following files:
+- ManualMode.cpp
+- HybridMode.cpp
+- DanceMode.cpp
+- AutomatedMode.cpp
+- MP3Handler.cpp
+- ComboHandler.cpp
+
+Common tunable settings include:
+
+In the mode files:
+- speedLimit: caps motor output to ensure safety and control
+- expoCurve: applies an exponential curve to joystick inputs for smoother response
+- domeSpeedLimit: limits dome motor speed
+- deadzone: prevents minor joystick drift from triggering motor movement
+- randomDelayMin / randomDelayMax: controls how often auto sounds or dome movements trigger
+
+In MP3Handler:
+- File ranges per category (e.g., Happy = 0300–0330)
+- Toggle vs. momentary button handling
+- Category enable/disable switches
+
+In ComboHandler:
+- Combo actions and which combo numbers trigger them
+- MarcDuino command mapping
+- MP3 suppression behavior
+
+-------------------------------------------------------------------------------
+EDITING MODE BEHAVIOR
+-------------------------------------------------------------------------------
+
+Each mode is defined in its own .cpp file. You can edit these to:
+- Change how dome or drive respond to input
+- Add automated triggers (MP3s, dome sweeps, panel activations)
+- Insert custom safety rules
+
+Example: To make R2 auto-play a track when entering Dance Mode:
+
+  void enterMode() {
+    MP3Handler::playTrack(0432); // play custom sound
+  }
+
+You can also adjust movement logic directly in the main loop of each mode.
+
+-------------------------------------------------------------------------------
+ADDING NEW COMBO ACTIONS
+-------------------------------------------------------------------------------
+
+Each combo slot (1–32) can be remapped to a new function.
+
+Example: Add a new sound trigger to Combo 15
+
+  if (comboNumber == 15) {
+    MP3Handler::playTrack(0366);
+  }
+
+Example: Trigger a MarcDuino panel open on Combo 20
+
+  if (comboNumber == 20) {
+    sendMarcDuinoCommand(":SE04\r");
+  }
+
+These changes go in ComboHandler.cpp.
+
+-------------------------------------------------------------------------------
+CREATING CUSTOM MODES
+-------------------------------------------------------------------------------
+
+Want a new mode entirely? Duplicate an existing file (like DanceMode.cpp) and 
+register it in MainControl.cpp. Assign it a combo number and update the LED 
+blink count.
+
+Just make sure each mode implements:
+- enterMode() → what happens when switching in
+- runMode() → what runs every loop
+- exitMode() → optional cleanup logic
+
+You can now create:
+- Game mode
+- Animatronic show mode
+- Remote volume/mic trigger mode
+
+Shadow-RC is your foundation.
+
+-------------------------------------------------------------------------------
+BEST PRACTICES
+-------------------------------------------------------------------------------
+
+- Use combo slots logically:
+    1–4 for modes
+    5–8 for MarcDuino
+    9–32 for MP3s, servos, lights, etc.
+
+- Keep filenames consistent:
+    MP3 Trigger requires four-digit names (e.g., 0360.mp3)
+
+- Use Serial Monitor for debugging custom behavior
+
+- Always backup your changes and comment your custom logic
+
+
+
+===============================================================================
+                CHAPTER 10: STARTUP BEHAVIOR & KILL SWITCH LOGIC
+===============================================================================
+
+This chapter explains what happens when your Shadow-RC system powers on, how the 
+startup sequence is handled, and how the kill switch system ensures safety in 
+all modes. Both behaviors are customizable, and understanding them is key to 
+troubleshooting and system reliability.
+
+-------------------------------------------------------------------------------
+STARTUP SEQUENCE OVERVIEW
+-------------------------------------------------------------------------------
+
+When the Arduino Mega is powered on, Shadow-RC performs the following steps:
+
+- Pin Initialization:
+  All input and output pins are configured (PWM inputs, LED output, serial ports)
+
+- Sync Byte Transmission (0xAA):
+  Sent over TX2 to enable packetized serial mode for Sabertooth and SyRen
+  Required to wake the motor controllers for operation
+
+- Serial Device Setup:
+  MP3 Trigger is initialized (Serial1)
+  MarcDuino is optionally initialized (Serial3 or Serial1, depending on config)
+
+- Default Mode Selection:
+  The system defaults to Manual Mode on power-up
+  The onboard LED (pin 13) will blink once to confirm
+
+- Startup Sound (Optional):
+  If the MP3 Trigger is active and MP3 triggers are enabled,
+  the system plays track 0255.mp3
+  You can change or remove this in MainControl.cpp
+
+-------------------------------------------------------------------------------
+ADDING OR CHANGING THE STARTUP SOUND
+-------------------------------------------------------------------------------
+
+To customize the startup sound, edit the following line:
+
+  MP3Handler::playTrack(0255); // default power-on sound
+
+To change the sound, simply update the track number:
+
+  MP3Handler::playTrack(0312); // custom droid boot-up tone
+
+To disable startup sound, comment out the line entirely.
+
+-------------------------------------------------------------------------------
+KILL SWITCH SYSTEM
+-------------------------------------------------------------------------------
+
+Shadow-RC includes a software-based kill switch. This allows you to instantly 
+stop all motor activity and ignore further drive/dome inputs until re-enabled.
+
+This is useful both for safety and for pausing R2 in a static pose without 
+shutting down the full system.
+
+-------------------------------------------------------------------------------
+HOW TO TRIGGER THE KILL SWITCH
+-------------------------------------------------------------------------------
+
+The kill switch is toggled using a combo input, usually:
+
+  Joystick B DOWN + CH6 A (Combo 4)
+
+You can change this combo number in ComboHandler.cpp.
+
+When triggered:
+- All drive and dome motor commands are stopped
+- Dome automation and MP3 playback continue (unless separately disabled)
+- A debug message is printed to Serial Monitor (if enabled)
+
+-------------------------------------------------------------------------------
+KILL SWITCH STATE HANDLING
+-------------------------------------------------------------------------------
+
+The kill switch uses a global flag:
+
+  bool killSwitchEngaged = false;
+
+Each mode checks this flag before sending motor commands:
+
+  if (!killSwitchEngaged) {
+    ST.motor(1, driveLeft);
+    ST.motor(2, driveRight);
+  }
+
+You can customize kill behavior to also:
+- Mute dome motion
+- Stop MP3 playback
+- Trigger an emergency light sequence
+
+-------------------------------------------------------------------------------
+RECOVERY FROM KILL STATE
+-------------------------------------------------------------------------------
+
+Triggering the same combo again re-enables control. The flag toggles each time.
+
+To add sound feedback for the kill switch:
+
+  MP3Handler::playTrack(0455); // custom safety tone
+
+-------------------------------------------------------------------------------
+TROUBLESHOOTING STARTUP & KILL SWITCHES
+-------------------------------------------------------------------------------
+
+Problem: Motors don’t respond after startup
+- Confirm that the sync byte (0xAA) is sent during setup()
+- Ensure killSwitchEngaged is false
+- Check if system is still in kill mode from last session
+
+Problem: MP3 doesn’t play on startup
+- Ensure Serial1 is properly initialized
+- Confirm MP3 Trigger has power and track 0255.mp3 exists
+- Check if MP3 suppression is active due to MarcDuino
+
+Problem: Kill switch doesn’t trigger
+- Check combo detection logic in ComboHandler.cpp
+- Confirm button PWM signal (especially CH6) is being detected
+
+-------------------------------------------------------------------------------
+WHAT'S NEXT
+-------------------------------------------------------------------------------
+
+In the next chapter, we’ll cover troubleshooting strategies and walk through 
+the most common issues builders face when wiring or programming Shadow-RC.
+
+
+
+===============================================================================
+                    CHAPTER 11: TROUBLESHOOTING & DIAGNOSTICS
+===============================================================================
+
+Even the best systems hit snags. This chapter covers the most common issues 
+builders encounter with Shadow-RC and provides step-by-step strategies to help 
+you identify, isolate, and fix problems.
+
+Whether your motors aren’t responding, your combos won’t trigger, or your dome 
+won’t move—this section has you covered.
+
+-------------------------------------------------------------------------------
+GENERAL TROUBLESHOOTING STRATEGY
+-------------------------------------------------------------------------------
+
+Start with power:
+- Is the Arduino receiving 5V?
+- Are the RC receivers powered and responding?
+- Are the motor controllers powered with the correct voltage (usually 12V)?
+
+Check serial communication:
+- Are TX1, TX2, and TX3 connected properly?
+- Are your DIP switches set correctly for packetized serial?
+- Was the 0xAA sync byte sent on boot (TX2)?
+
+Use Serial Monitor:
+- Enable debugging messages inside each mode or handler file
+- Use Serial.begin(9600) and Serial.println() to confirm code flow
+
+-------------------------------------------------------------------------------
+SYMPTOM: MOTORS ARE UNRESPONSIVE
+-------------------------------------------------------------------------------
+
+Checklist:
+- Confirm DIP switches are set for packetized serial
+- Ensure TX2 (pin 16) is connected to Sabertooth/SyRen S1 line
+- Verify killSwitchEngaged is false
+- Confirm the 0xAA sync byte is sent in setup()
+- Check motor speed values are non-zero and commands are being sent
+
+Advanced:
+- Use an oscilloscope or logic analyzer to confirm serial activity on TX2
+
+-------------------------------------------------------------------------------
+SYMPTOM: DOME NOT MOVING
+-------------------------------------------------------------------------------
+
+Checklist:
+- Verify CH1B (pin 21) is connected to the dome joystick (Controller B)
+- Confirm SyRen 10 DIP switches are set for address 129
+- Check dome motor wiring and power
+- Use Serial Monitor to print calculated dome motor speeds
+
+-------------------------------------------------------------------------------
+SYMPTOM: COMBO DOESN’T TRIGGER
+-------------------------------------------------------------------------------
+
+Checklist:
+- Ensure joystick direction is held before button is pressed
+- Confirm the button channel (CH3–CH6) is wired correctly to Arduino
+- For CH6 (momentary), verify PWM spike reaches ~1988 µs
+- Confirm combo number is mapped in ComboHandler.cpp
+
+Debug Tip:
+- Use Serial.print("Combo Detected: "); in the handler code to confirm detection
+
+-------------------------------------------------------------------------------
+SYMPTOM: MP3s NOT PLAYING
+-------------------------------------------------------------------------------
+
+Checklist:
+- Confirm TX1 is connected to MP3 Trigger RX
+- Ensure MP3 Trigger has 5V power
+- Check that filenames are NNNN.mp3 (four-digit format)
+- Ensure they are stored in the root of a FAT32-formatted SD card
+
+Advanced:
+- Connect the MP3 Trigger to your PC and send commands via terminal to test manually
+
+-------------------------------------------------------------------------------
+SYMPTOM: MARCDUINO COMMANDS FAIL
+-------------------------------------------------------------------------------
+
+Checklist:
+- Confirm correct TX line:
+    TX1 for single-board setup
+    TX3 for dual-board setup
+- Ensure commands like :OP05, :SE10, etc. are being sent
+- Check that MarcDuino has power and boots properly
+- Use Serial Monitor to print outgoing command strings
+
+-------------------------------------------------------------------------------
+SYSTEM-WIDE SAFETY TIPS
+-------------------------------------------------------------------------------
+
+- Always share a common GND between Arduino and all connected devices
+- Add fuses and circuit breakers where needed
+- Label all serial lines and RC channels to avoid cross-wiring
+- Use a preflight checklist before events or public demos
+
+-------------------------------------------------------------------------------
+WHAT'S NEXT
+-------------------------------------------------------------------------------
+
+In the final chapter, we’ll summarize advanced tips and builder tools for 
+diagnosing subtle issues and enhancing your build.
+
+
+
+===============================================================================
+              CHAPTER 12: ADVANCED BUILDER TOOLS & FINAL TIPS
+===============================================================================
+
+Congratulations—if you’ve made it this far, you now understand the full 
+foundation of the Shadow-RC control system.
+
+This chapter gives you a final set of advanced tools, tips, and ideas for 
+making the system your own. These extras aren’t required, but they’ll help you 
+push your droid further, streamline development, and troubleshoot faster.
+
+-------------------------------------------------------------------------------
+SERIAL DEBUGGING & LIVE LOGGING
+-------------------------------------------------------------------------------
+
+Shadow-RC makes extensive use of Serial.print() for live debugging.
+
+You can enhance this by:
+- Creating a DEBUG_MODE flag in each file
+- Using conditional debug macros to enable/disable output globally
+
+Example:
+  #define DEBUG_MODE true
+
+  #if DEBUG_MODE
+    Serial.print("Drive Speed: ");
+    Serial.println(driveLeft);
+  #endif
+
+Tip:
+Use the Arduino IDE Serial Plotter to graph values like joystick curves, 
+dome speed, or timing intervals.
+
+-------------------------------------------------------------------------------
+LOGGING COMBO ACTIVITY
+-------------------------------------------------------------------------------
+
+Want to verify which combos are firing during runtime?
+
+Use this simple line:
+  Serial.print("Combo Triggered: ");
+  Serial.println(comboNumber);
+
+This is especially useful when:
+- Assigning new features
+- Tracking input overlap
+- Debugging mode or MarcDuino trigger combos
+
+-------------------------------------------------------------------------------
+USING A CONFIG HEADER FILE
+-------------------------------------------------------------------------------
+
+As your project grows, consider creating a Config.h file to:
+- Centralize all tunable values (speed, expo curve, MP3 ranges)
+- Enable/disable features (MP3, MarcDuino, auto mode)
+- Assign device addresses and combo mappings
+
+This helps:
+- Keep the code clean
+- Improve readability
+- Make the system easier to share or update
+
+-------------------------------------------------------------------------------
+TEST SKETCHES FOR ISOLATED DEBUGGING
+-------------------------------------------------------------------------------
+
+If you’re unsure whether a bug is caused by hardware or code, isolate it.
+
+Examples:
+- Use a PWM test sketch to confirm CH3–CH6 input pulses
+- Write a serial test sketch to send packetized Sabertooth commands manually
+- Test the MP3 Trigger board using USB Serial tools and terminal apps
+
+Keep these saved in a `/tests` folder for fast access during repair or debugging.
+
+-------------------------------------------------------------------------------
+BUILDING FOR EVENTS & FIELD WORK
+-------------------------------------------------------------------------------
+
+When taking R2 out to events:
+- Bring a laptop, USB cable, and spare SD card
+- Include a laminated DIP switch diagram inside the droid
+- Preload startup MP3s and LED blink indicators for visual system checks
+- Assign a combo slot to a quick test routine (e.g., LED blink + sound + dome twitch)
+
+These tricks can save your build at conventions or stage shows.
+
+-------------------------------------------------------------------------------
+FUTURE EXPANSION IDEAS
+-------------------------------------------------------------------------------
+
+Ways to expand Shadow-RC even further:
+- Add servo controls to combo slots
+- Use NeoPixels or WS2812 strips with a custom light handler
+- Add a third RC controller for soundboard or utility triggers
+- Integrate voice control or Bluetooth layer for wireless override
+- Pair with a Raspberry Pi for AI, sensors, or screen/video playback
+
+Shadow-RC is a platform—it’s built to evolve with your ideas.
+
+-------------------------------------------------------------------------------
+FINAL WORDS
+-------------------------------------------------------------------------------
+
+Shadow-RC is not just a system—it’s a framework you can grow into.
+
+You now have a clean, stable, and professional foundation for your astromech. 
+Whether you’re tuning expo curves, commanding MarcDuino, or writing your own 
+show mode—Shadow-RC puts the control in your hands.
+
+May the Force be with you, Builder.
+
+
+
