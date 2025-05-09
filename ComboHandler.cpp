@@ -157,8 +157,13 @@ void setupComboHandler() {
 void updateComboHandler() {
   int ch1a_pwm = pulseIn(RECEIVER_A_CH1_PIN, HIGH, 50000);
   int ch2a_pwm = pulseIn(RECEIVER_A_CH2_PIN, HIGH, 50000);
-  int ch1b_pwm = pulseIn(RECEIVER_B_CH1_PIN, HIGH, 50000);
   int ch2b_pwm = pulseIn(CH2B_PIN, HIGH, 50000);
+
+  // Disable CH1B (joystick B) combos in non-manual modes
+  int ch1b_pwm = 1500;
+  if (currentMode == 1 || currentMode == 4) {
+    ch1b_pwm = pulseIn(RECEIVER_B_CH1_PIN, HIGH, 50000);
+  }
 
   bool comboDown  = (ch2a_pwm >= COMBO_DOWN_MIN && ch2a_pwm <= COMBO_DOWN_MAX) || (ch2b_pwm >= COMBO_DOWN_MIN && ch2b_pwm <= COMBO_DOWN_MAX);
   bool comboUp    = (ch2a_pwm >= COMBO_UP_MIN && ch2a_pwm <= COMBO_UP_MAX) || (ch2b_pwm >= COMBO_UP_MIN && ch2b_pwm <= COMBO_UP_MAX);

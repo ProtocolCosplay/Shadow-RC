@@ -83,34 +83,23 @@
 // ==========================
 //       TUNABLE SETTINGS
 // ==========================
+#define DEBUG_MODE true
 
-#define DEBUG_MODE false  // Set to true to enable Serial debugging
+static float expoCurve        = 1;
+static int   speedLimit       = 25;
+static int   deadZone         = 0;
+static int   taperFallRate    = 60;
 
-// --- Drive Behavior ---
-static float expoCurve        = 1;    // Shapes input response curve (1 = linear, higher = smoother)
-static int   speedLimit       = 25;   // Caps max drive/turn speed (0–127)
-static int   deadZone         = 0;    // Ignores small joystick movement near center
+static int   domeDeadZone          = 0;
+static int   fineControlMultiplier = 2;
+static int   domeSpeedLimit        = 100;
+static float domeLeftGain          = 1.00;
+static float domeRightGain         = 1.00;
 
-// --- Turn Damping ---
-static int   taperFallRate    = 60;   // Controls how fast turn speed fades to zero
-
-// --- Dome Control ---
-static int   domeDeadZone          = 0;    // Ignores small dome joystick input near center
-static int   domeAccelerationRate  = 2;    // Unused (placeholder for dome acceleration ramp)
-static int   domeDecelerationRate  = 3;    // Unused (placeholder for dome deceleration ramp)
-static int   fineControlMultiplier = 2;    // Boosts dome speed during flicks or quick inputs
-static int   domeSpeedLimit        = 100;  // Caps dome spin speed (0–100)
-static float domeLeftGain          = 1.00; // Adjusts dome speed when turning left
-static float domeRightGain         = 1.00; // Adjusts dome speed when turning right
-
-// --- Flick Sensitivity ---
-static const unsigned long domeFlickMinDuration = 40;  // Minimum flick time (ms) to trigger burst
-static const int domeFlickThreshold = 5;               // Joystick speed required to count as a flick
-static const int maxFlickSpeed = 20;                   // Max dome speed allowed during flicks
-
-// --- Safety Timeout ---
-static const unsigned long motorTimeoutMs = 50;        // Time in ms before motors stop on inactivity
-
+static const unsigned long domeFlickMinDuration = 40;
+static const int domeFlickThreshold = 5;
+static const int maxFlickSpeed = 20;
+static const unsigned long motorTimeoutMs = 50;
 
 // ==========================
 //       INTERNAL STATE
@@ -129,31 +118,22 @@ static unsigned long lastTurnCommandTime  = 0;
 
 static unsigned long domeStartTime = 0;
 static bool domeFlickActive = false;
-
 static bool wasTurnInputActive = false;
 static bool lastKillState = false;
 
-// ==========================
-//     Sabertooth Setup
 // ==========================
 Sabertooth ST(128, Serial2);
 Sabertooth domeMotor(129, Serial2);
 
 // ==========================
-//    HELPER DECLARATIONS
-// ==========================
 int  applyExpoCurve(int input, float curve, int limit = speedLimit);
 int  taperToZero(int value);
 
-// ==========================
-//           SETUP
-// ==========================
 void setupManualMode() {
   if (DEBUG_MODE) {
-    Serial.begin(115115);
+    Serial.begin(115200);
     Serial.println("=== Manual Mode Initialized ===");
   }
-
   setupPWMInputs();
   Serial2.begin(9600);
   delay(100);
@@ -161,9 +141,6 @@ void setupManualMode() {
   delay(10);
 }
 
-// ==========================
-//         MAIN LOOP
-// ==========================
 void loopManualMode() {
   static unsigned long lastFrameMicros = 0;
   const unsigned long frameIntervalMicros = 5000;
@@ -174,7 +151,6 @@ void loopManualMode() {
 
   unsigned long now = millis();
 
-  // === Read Inputs ===
   int rawTurn  = getPWMValue_CH1A();
   int rawDrive = getPWMValue_CH2A();
   int rawDome  = getPWMValue_CH1B();
@@ -189,21 +165,16 @@ void loopManualMode() {
     domeInput = map(constrainedDome, 1000, 1500, -100, 0) * domeLeftGain;
   }
 
-  // === Apply Deadzones ===
   if (abs(mappedDrive) <= deadZone) mappedDrive = 0;
   if (abs(mappedTurn)  <= deadZone) mappedTurn  = 0;
-
   if (abs(mappedDrive) > 40) mappedTurn = constrain(mappedTurn, -100, 100);
   if (mappedDrive == 0 && mappedTurn != 0) lastTurn = constrain(lastTurn, -40, 40);
 
-  // === Exponential Curve ===
   int rawCurvedDome = applyExpoCurve(domeInput, expoCurve, domeSpeedLimit);
   int curvedDome = domeFlickActive ? rawCurvedDome : rawCurvedDome * fineControlMultiplier;
-
   int curvedDrive = applyExpoCurve(mappedDrive, expoCurve);
   int curvedTurn  = applyExpoCurve(mappedTurn,  expoCurve);
 
-  // === Drive / Turn Logic ===
   lastDrive = curvedDrive;
   lastDriveCommandTime = now;
 
@@ -217,9 +188,7 @@ void loopManualMode() {
 
   wasTurnInputActive = (mappedTurn != 0);
 
-  // === Kill Switch (Combo 1) ===
   bool killActive = isComboModeActive(1);
-
   if (killActive != lastKillState) {
     if (killActive && DEBUG_MODE) Serial.println("[KILL SWITCH ACTIVE]");
     else if (DEBUG_MODE)          Serial.println("[KILL SWITCH RELEASED]");
@@ -232,7 +201,6 @@ void loopManualMode() {
     curvedDome = 0;
   }
 
-  // === Dome Logic (with Flick Control) ===
   if (abs(domeInput) < domeDeadZone) {
     currentDomeSpeed = 0;
     if (domeFlickActive && (now - domeStartTime < domeFlickMinDuration)) {
@@ -249,11 +217,9 @@ void loopManualMode() {
     }
   }
 
-  // === Safety Timeout ===
   if (now - lastDriveCommandTime > motorTimeoutMs) lastDrive = 0;
   if (now - lastTurnCommandTime  > motorTimeoutMs) lastTurn  = 0;
 
-  // === Motor Outputs ===
   ST.drive(lastDrive);
   ST.turn(lastTurn);
 
@@ -263,7 +229,6 @@ void loopManualMode() {
     lastSentDomeSpeed = currentDomeSpeed;
   }
 
-  // === Debug Output ===
   if (DEBUG_MODE) {
     Serial.print("DriveRaw: "); Serial.print(mappedDrive);
     Serial.print(" | DriveOut: "); Serial.print(lastDrive);
@@ -274,10 +239,6 @@ void loopManualMode() {
   }
 }
 
-// ==========================
-//     HELPER FUNCTIONS
-// ==========================
-
 static int applyExpoCurve(int input, float curve, int limit) {
   float normalized = abs(input) / 127.0;
   float curved = pow(normalized, curve) * limit;
@@ -286,12 +247,7 @@ static int applyExpoCurve(int input, float curve, int limit) {
 
 static int taperToZero(int value) {
   int taperRate = map(abs(value), 0, speedLimit, 5, taperFallRate);
-  if (value > 0) {
-    value -= taperRate;
-    if (value < 0) value = 0;
-  } else if (value < 0) {
-    value += taperRate;
-    if (value > 0) value = 0;
-  }
-  return value;
+  if (value > 0) value -= taperRate;
+  else if (value < 0) value += taperRate;
+  return constrain(value, -speedLimit, speedLimit);
 }

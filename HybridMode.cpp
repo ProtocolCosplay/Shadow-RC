@@ -92,7 +92,7 @@
 #include <Arduino.h>
 #include <Sabertooth.h>
 
-#define DISABLE_MP3  // Comment this line out when ready to enable MP3 playback
+// #define DISABLE_MP3  // ✅ Leave this line commented out to ENABLE MP3s
 
 #ifndef DISABLE_MP3
 #endif
@@ -103,6 +103,9 @@
 void automationMode();
 static int applyExpoCurve(int input, float curve);
 static int taperToZero(int value);
+void runDomeAutomation();    
+void runAutoMP3();           
+void playMP3Track(int track);         
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sabertooth Motor Controller Setup
@@ -148,7 +151,7 @@ static const float GEAR_RATIO = 360.416 / 50.7;
 
 #ifndef DISABLE_MP3
 static unsigned long lastMP3Time = 0;
-static unsigned long nextMP3Delay = 0;
+static unsigned long nextMP3Delay = 0; 
 #endif
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -247,7 +250,8 @@ void loopHybridMode() {
   ST.turn(lastTurn);
 
   if (!killActive) {
-    automationMode();
+  runDomeAutomation();
+  runAutoMP3();
   } else {
     analogWrite(46, 0);
   }
@@ -271,20 +275,31 @@ void loopHybridMode() {
   delay(20);
 }
 
-void automationMode() {
+// ─────────────────────────────────────────────────────────────
+// Split Automation System — Dome + MP3 (non-blocking)
+// ─────────────────────────────────────────────────────────────
+
+void runDomeAutomation() {
+  static unsigned long lastMoveTime = 0;
+  static unsigned long nextMoveDelay = 0;
   static bool domeMoving = false;
   static int domeOffset = 0;
   static int moveCount = 0;
-  static int currentDomeSpeed = 0;
   static int domeDirection = 0;
+  static int sequenceSpeed = 30;
+  static bool sequenceStarted = false;
   static unsigned long domeEndTime = 0;
-  static unsigned long lastMoveTime = 0;
-  static unsigned long nextMoveDelay = 0;
 
   unsigned long now = millis();
-  if (now - modeEntryTime < modeDelayMillis) return;
+  if (now - modeEntryTime < 3000) return;
 
-  // If currently moving, check for completion
+  // === Timing setup
+  const float baseMsPerDegree = 1700.0 / 90.0;
+  const float curveFactor = 1.4;
+  const int baseSpeed = 30;
+  const int minSpeed = 25;
+  const int maxSpeed = 32;
+
   if (domeMoving) {
     if (now >= domeEndTime) {
       domeMotor.motor(1, 0);
@@ -294,92 +309,104 @@ void automationMode() {
     return;
   }
 
-  // Wait for delay to expire before triggering next move
   if (now - lastMoveTime < nextMoveDelay) return;
-
   lastMoveTime = now;
   nextMoveDelay = random(minMoveIntervalSec * 1000, maxMoveIntervalSec * 1000);
 
-  int direction = 0;
-  int angle = 0;
-  int speedPct = random(domeMinSpeedPercent, domeMaxSpeedPercent + 1);
-  int sabertoothSpeed = (speedPct * 127) / 100;
+  if (!sequenceStarted) {
+    sequenceSpeed = random(minSpeed, maxSpeed + 1);
+    sequenceStarted = true;
+    Serial.print("=== New Dome Sequence @ Speed: ");
+    Serial.println(sequenceSpeed);
+  }
 
-  if (moveCount >= 2) {
-    // Return to center
-    direction = (domeOffset < 0) ? 1 : -1;
-    angle = abs(domeOffset);
+  int direction = 0;
+  float angle = 0;
+  bool isReturnMove = false;
+
+  if (moveCount >= 2 || fabs(domeOffset) > 0.5) {
+    direction = (domeOffset >= 0) ? -1 : 1;
+    angle = fabs(domeOffset);
     moveCount = 0;
-    domeOffset = 0;
+    sequenceStarted = false;
+    isReturnMove = true;
     Serial.print("[DOME] Returning to center:  ");
   } else {
     direction = random(0, 2) == 0 ? -1 : 1;
     angle = random(domeMinAngleDeg, domeMaxAngleDeg + 1);
-    domeOffset += direction * angle;
     moveCount++;
     Serial.print("[DOME] Move ");
     Serial.print(moveCount);
     Serial.print(":  ");
-    Serial.print(direction > 0 ? "RIGHT" : "LEFT");
-    Serial.print("  ");
+    Serial.println(direction > 0 ? "RIGHT" : "LEFT");
   }
 
-  unsigned long duration = (angle * GEAR_RATIO * 1000.0) / sabertoothSpeed;
+  float speedRatio = baseSpeed / (float)sequenceSpeed;
+  float scaleFactor = pow(speedRatio, curveFactor);
+  float adjustedMsPerDegree = baseMsPerDegree * scaleFactor;
+
+  if (!isReturnMove && direction > 0) adjustedMsPerDegree *= 1.06;
+  if (!isReturnMove && direction < 0) adjustedMsPerDegree *= 0.96;
+
+  unsigned long duration = (unsigned long)(angle * adjustedMsPerDegree);
+  float actualAngleMoved = (float)duration / adjustedMsPerDegree;
+  domeOffset += direction * actualAngleMoved;
 
   Serial.print("Angle: ");
   Serial.print(angle);
+  Serial.print("°   Actual: ");
+  Serial.print(actualAngleMoved);
   Serial.print("°   Speed: ");
-  Serial.print(speedPct);
-  Serial.print("%   Value: ");
-  Serial.print(direction * sabertoothSpeed);
+  Serial.print(sequenceSpeed);
   Serial.print("   Duration: ");
   Serial.print(duration);
   Serial.print(" ms   Offset: ");
   Serial.println(domeOffset);
 
-  domeMotor.motor(1, direction * sabertoothSpeed);
+  domeMotor.motor(1, direction * sequenceSpeed);
   domeEndTime = now + duration;
   domeDirection = direction;
-  currentDomeSpeed = sabertoothSpeed;
+  currentDomeSpeed = sequenceSpeed;
   domeMoving = true;
+}
 
-#ifndef DISABLE_MP3
-  // === Random MP3 Trigger ===
+
+void runAutoMP3() {
   static unsigned long lastMP3Time = 0;
   static unsigned long nextMP3Delay = 0;
 
-  if (now - lastMP3Time > nextMP3Delay) {
+  unsigned long now = millis();
+
+  if (now - modeEntryTime < 3000) return;
+
+  if (now - lastMP3Time > nextMP3Delay && !isMP3Suppressed()) {
     lastMP3Time = now;
 
-    if (!isMP3Suppressed()) {
-      int category = random(0, 3);
-      int track = 0;
-      const char* label = "";
+    int category = random(0, 3);
+    int track = 0;
+    const char* label = "";
 
-      if (category == 0) {
-        track = random(HYBRID_HAPPY_START, HYBRID_HAPPY_END + 1);
-        label = "Happy";
-      } else if (category == 1) {
-        track = random(HYBRID_SAD_START, HYBRID_SAD_END + 1);
-        label = "Sad";
-      } else {
-        track = random(HYBRID_TALK_START, HYBRID_TALK_END + 1);
-        label = "Talking";
-      }
-
-      Serial.print("[MP3] Random ");
-      Serial.print(label);
-      Serial.print(" → Track ");
-      Serial.println(track);
-      mp3.trigger(track);
+    if (category == 0) {
+      track = random(HYBRID_HAPPY_START, HYBRID_HAPPY_END + 1);
+      label = "Happy";
+    } else if (category == 1) {
+      track = random(HYBRID_SAD_START, HYBRID_SAD_END + 1);
+      label = "Sad";
     } else {
-      Serial.println("[MP3] Suppressed – skipping random MP3 playback.");
+      track = random(HYBRID_TALK_START, HYBRID_TALK_END + 1);
+      label = "Talking";
     }
 
-    nextMP3Delay = random(15000, 30000);
+    Serial.print("[MP3] Random ");
+    Serial.print(label);
+    Serial.print(" → Track ");
+    Serial.println(track);
+
+    playMP3Track(track);
+    nextMP3Delay = random(5000, 15000);
   }
-#endif
 }
+
 
 
 // ─────────────────────────────────────────────────────────────────────────────

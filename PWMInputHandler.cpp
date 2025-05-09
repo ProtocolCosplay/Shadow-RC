@@ -67,6 +67,7 @@
 
 #include "PWMInputHandler.h"
 #include <Arduino.h>
+#include "ComboHandler.h"  // for access to currentMode
 
 // ===================================
 // === PIN ASSIGNMENTS (Interrupt) ===
@@ -78,27 +79,29 @@
 // ==================================================
 // === VOLATILE VALUES (Shared with Interrupts) =====
 // ==================================================
-// These store the measured PWM pulse widths (in microseconds)
 volatile int ch1_value  = 1500;  // Turn input (CH1A)
 volatile int ch2_value  = 1500;  // Drive input (CH2A)
 volatile int ch1b_value = 1500;  // Dome input  (CH1B)
 
-// Internal timing markers for rising edges
 volatile unsigned long ch1_start, ch2_start, ch1b_start;
 
 // ===============================
 // === SETUP FUNCTION ===========
 // ===============================
 void setupPWMInputs() {
-  // Set input mode
   pinMode(CH1_PIN, INPUT);
   pinMode(CH2_PIN, INPUT);
   pinMode(CH1B_PIN, INPUT);
 
-  // Attach rising-edge interrupts
-  attachInterrupt(digitalPinToInterrupt(CH1_PIN),  ch1_rise,  RISING);
-  attachInterrupt(digitalPinToInterrupt(CH2_PIN),  ch2_rise,  RISING);
-  attachInterrupt(digitalPinToInterrupt(CH1B_PIN), ch1b_rise, RISING);
+  attachInterrupt(digitalPinToInterrupt(CH1_PIN), ch1_rise, RISING);
+  attachInterrupt(digitalPinToInterrupt(CH2_PIN), ch2_rise, RISING);
+
+  // Only attach CH1B interrupts in Manual or Carpet Mode
+  if (currentMode == 1 || currentMode == 4) {
+    attachInterrupt(digitalPinToInterrupt(CH1B_PIN), ch1b_rise, RISING);
+  } else {
+    Serial.println("[PWM] CH1B interrupt skipped for encoder compatibility.");
+  }
 }
 
 // ===============================
